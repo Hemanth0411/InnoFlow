@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'analytics',
     'users',
     'workflows',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -105,6 +106,27 @@ REST_FRAMEWORK = {
 # settings.py
 AUTH_USER_MODEL = 'users.UserProfile'
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'workflow_debug.log',
+        },
+    },
+    'loggers': {
+        'workflows': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -120,6 +142,14 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+# InnoFlow/settings.py
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Use Redis as the broker
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
 
 
 # Internationalization
