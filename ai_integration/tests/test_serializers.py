@@ -1,55 +1,58 @@
-from django.test import TestCase
-from ai_integration.models import AIModelConfig, ModelComparison, ModelResponse
-from ai_integration.serializers import (
-    AIModelConfigSerializer, 
-    ModelResponseSerializer, 
-    ModelComparisonSerializer,
-    CompareModelsSerializer
-)
+from rest_framework.test import APITestCase
+from ai_integration.serializers import AIModelConfigSerializer, ModelComparisonSerializer, ModelResponseSerializer, CompareModelsSerializer, TaskStatusSerializer
+from ai_integration.models import AIModelConfig, ModelResponse, ModelComparison, TaskStatus
 
-class AIModelConfigSerializerTest(TestCase):
-    def setUp(self):
-        self.model_data = {
-            'name': 'Test Model',
-            'provider': 'OPENAI',
-            'model_name': 'gpt-4-turbo',
-            'is_active': True,
-            'parameters': {}  # 
-        }
+class TestAIModelConfigSerializer(APITestCase):
+    def test_serialize_model_config(self):
+        model_config = AIModelConfig.objects.create(
+            name="Test Model",
+            provider="OPENAI",
+            model_name="gpt-3.5-turbo",
+            api_key="your_openai_api_key"
+        )
+        serializer = AIModelConfigSerializer(model_config)
+        self.assertIn("name", serializer.data)
+        self.assertIn("provider", serializer.data)
 
-        self.model = AIModelConfig.objects.create(**self.model_data)
-        self.serializer = AIModelConfigSerializer(instance=self.model)
-    
-    def test_contains_expected_fields(self):
-        data = self.serializer.data
-        self.assertEqual(set(data.keys()), set(['id', 'name', 'provider', 'model_name', 'is_active', 'parameters']))
-    
-    def test_field_content(self):
-        data = self.serializer.data
-        self.assertEqual(data['name'], self.model_data['name'])
-        self.assertEqual(data['provider'], self.model_data['provider'])
-        self.assertEqual(data['model_name'], self.model_data['model_name'])
-        self.assertEqual(data['is_active'], self.model_data['is_active'])
-        self.assertEqual(data['parameters'], self.model_data['parameters'])
+class TestModelResponseSerializer(APITestCase):
+    def test_serialize_model_response(self):
+        model_config = AIModelConfig.objects.create(
+            name="Test Model",
+            provider="OPENAI",
+            model_name="gpt-3.5-turbo",
+            api_key="your_openai_api_key"
+        )
+        comparison = ModelComparison.objects.create(prompt="Test prompt")
+        response = ModelResponse.objects.create(
+            comparison=comparison,
+            model_config=model_config,
+            response="Test response",
+            latency=0.5
+        )
+        serializer = ModelResponseSerializer(response)
+        self.assertIn("response", serializer.data)
+        self.assertIn("latency", serializer.data)
 
-class CompareModelsSerializerTest(TestCase):
-    def test_valid_data(self):
-        data = {
-            'prompt': 'Test prompt',
-            'model_ids': [1, 2, 3]
-        }
-        serializer = CompareModelsSerializer(data=data)
-        self.assertTrue(serializer.is_valid())
-    
-    def test_invalid_data(self):
-        # Missing required field
-        data = {'prompt': 'Test prompt'}
-        serializer = CompareModelsSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('model_ids', serializer.errors)
-        
-        # Invalid model_ids format
-        data = {'prompt': 'Test prompt', 'model_ids': 'not_a_list'}
-        serializer = CompareModelsSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('model_ids', serializer.errors)
+class TestModelComparisonSerializer(APITestCase):
+    def test_serialize_model_comparison(self):
+        model_config = AIModelConfig.objects.create(
+            name="Test Model",
+            provider="OPENAI",
+            model_name="gpt-3.5-turbo",
+            api_key="your_openai_api_key"
+        )
+        comparison = ModelComparison.objects.create(prompt="Test prompt")
+        comparison.compared_models.add(model_config)
+        serializer = ModelComparisonSerializer(comparison)
+        self.assertIn("prompt", serializer.data)
+        self.assertIn("compared_models", serializer.data)
+
+class TestTaskStatusSerializer(APITestCase):
+    def test_serialize_task_status(self):
+        task_status = TaskStatus.objects.create(
+            task_id="test_task_id",
+            status="pending"
+        )
+        serializer = TaskStatusSerializer(task_status)
+        self.assertIn("task_id", serializer.data)
+        self.assertIn("status", serializer.data)

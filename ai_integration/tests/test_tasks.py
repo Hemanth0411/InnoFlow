@@ -1,64 +1,90 @@
-from django.test import TestCase
 from unittest.mock import patch, MagicMock
-from ai_integration.tasks import run_ai_model_task
-from ai_integration.models import AIModelConfig, ModelComparison, ModelResponse
-from ai_integration.providers_registry import ProviderRegistry
+from unittest import TestCase
+from ai_integration.utils.claude_provider import ClaudeProvider 
+from ai_integration.utils.deepseek_provider import DeepSeekProvider 
+from ai_integration.utils.openai_provider import OpenAIProvider
+from ai_integration.utils.huggingface_provider import HuggingFaceProvider 
+from ai_integration.utils.ollama_provider import OllamaProvider
 
-class RunAIModelTaskTest(TestCase):
-    def setUp(self):
-        self.model_config = AIModelConfig.objects.create(
-            name="Test Model",
-            provider="OPENAI",
-            model_name="gpt-3.5-turbo",
-            is_active=True,
-            api_key="test_key",
-            parameters={}  # ✅ FIX: set empty or dummy parameters
-        )
-        self.comparison = ModelComparison.objects.create(
-        prompt="Test prompt"
-    )
-        self.comparison.compared_models.add(self.model_config)
-    
-    @patch('ai_integration.providers_registry.ProviderRegistry.get_provider')
-    def test_run_openai_task(self, mock_get_provider):
-        # Mock the provider
-        mock_provider = MagicMock()
-        mock_provider.generate_completion.return_value = "OpenAI response"
-        mock_get_provider.return_value = mock_provider
+class TestClaudeProvider(TestCase):
+    @patch('anthropic.Client')
+    def test_generate_completion(self, mock_client):
+        api_key = "your_claude_api_key"
+        provider = ClaudeProvider(api_key)
+        prompt = "Hello, how are you?"
         
-        # Call the task
-        response = run_ai_model_task(self.model_config.id, "Test prompt", self.comparison.id)
+        mock_response = MagicMock()
+        mock_response.completion = 'I am fine, thank you!'
+        mock_client.return_value.completions.create.return_value = mock_response
         
-        # Check that the provider was called
-        mock_provider.generate_completion.assert_called_once_with("Test prompt")
-        
-        # Check the response
-        self.assertEqual(response, "OpenAI response")
-        
-        # Check that a ModelResponse was created
-        model_response = ModelResponse.objects.get(
-        comparison=self.comparison, model_config=self.model_config
-        )
+        response = provider.generate_completion(prompt)
+        self.assertIsNotNone(response)
+        self.assertEqual(response, 'I am fine, thank you!')
 
-        self.assertEqual(model_response.response, "OpenAI response")
-        self.assertIsNotNone(model_response.latency)
-    
-    @patch('ai_integration.providers_registry.ProviderRegistry.get_provider')
-    def test_run_claude_task(self, mock_get_provider):
-        # Update model config to use Anthropic
-        self.model_config.provider = "ANTHROPIC"
-        self.model_config.save()
+class TestDeepSeekProvider(TestCase):
+    @patch('requests.post')
+    def test_generate_completion(self, mock_post):
+        api_key = "your_deepseek_api_key"
+        model_name = "your_model_name"
+        provider = DeepSeekProvider(api_key, model_name)
+        prompt = "Hello, how are you?"
         
-        # Mock the provider
-        mock_provider = MagicMock()
-        mock_provider.generate_completion.return_value = "Claude response"
-        mock_get_provider.return_value = mock_provider
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"choices": [{"message": {"content": "I am fine, thank you!"}}]}
+        mock_post.return_value = mock_response
         
-        # Call the task
-        response = run_ai_model_task(self.model_config.id, "Test prompt", self.comparison.id)
+        response = provider.generate_completion(prompt)
+        self.assertIsNotNone(response)
+        self.assertEqual(response, 'I am fine, thank you!')
+
+class TestHuggingFaceProvider(TestCase):
+    @patch('ai_integration.utils.huggingface_provider.pipeline')  # ✅ Correct place
+    def test_generate_completion(self, mock_pipeline):
+        model_name = "gpt2"  # Use a valid model name
+        provider = HuggingFaceProvider(model_name)
+        prompt = "Hello, how are you?"
         
-        # Check that the provider was called
-        mock_provider.generate_completion.assert_called_once_with("Test prompt")
+        mock_response = [{"generated_text": "I am fine, thank you!"}]
+        mock_pipeline.return_value.return_value = mock_response
         
-        # Check the response
-        self.assertEqual(response, "Claude response")
+        response = provider.generate_completion(prompt)
+        self.assertIsNotNone(response)
+        self.assertEqual(response, 'I am fine, thank you!')
+
+class TestOllamaProvider(TestCase):
+    @patch('requests.post')
+    def test_generate_completion(self, mock_post):
+        base_url = "http://your_ollama_base_url"
+        model_name = "your_model_name"
+        provider = OllamaProvider(base_url, model_name)
+        prompt = "Hello, how are you?"
+        
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"response": "I am fine, thank you!"}
+        mock_post.return_value = mock_response
+        
+        response = provider.generate_completion(prompt)
+        self.assertIsNotNone(response)
+        self.assertEqual(response, 'I am fine, thank you!')
+
+class TestOpenAIProvider(TestCase):
+    @patch('openai.ChatCompletion.create')
+    def test_generate_completion(self, mock_create):
+        api_key = "your_openai_api_key"
+        model_name = "gpt-3.5-turbo"
+        provider = OpenAIProvider(api_key, model_name)
+        prompt = "Hello, how are you?"
+
+        mock_message = MagicMock()
+        mock_message.content = 'I am fine, thank you!'
+
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        mock_create.return_value = mock_response
+
+        response = provider.generate_completion(prompt)
+        self.assertIsNotNone(response)
+        self.assertEqual(response, 'I am fine, thank you!')

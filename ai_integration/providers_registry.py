@@ -5,7 +5,13 @@ from .utils.claude_provider import ClaudeProvider
 from .utils.deepseek_provider import DeepSeekProvider
 
 class ProviderRegistry:
-    _providers = {}
+    _providers = {
+        "OPENAI": OpenAIProvider,
+        "CLAUDE": ClaudeProvider,
+        "HUGGINGFACE": HuggingFaceProvider,
+        "DEEPSEEK": DeepSeekProvider,
+        "OLLAMA": OllamaProvider,
+    }
 
     @classmethod
     def register_provider(cls, provider_name: str, provider_class):
@@ -13,10 +19,17 @@ class ProviderRegistry:
 
     @classmethod
     def get_provider(cls, provider_name: str, **kwargs):
-        provider_class = cls._providers.get(provider_name)
+        key = provider_name.strip().upper()  # 🔥 This line fixes it
+        provider_class = cls._providers.get(key)
         if not provider_class:
-            raise ValueError(f"Provider '{provider_name}' not found")
+            raise ValueError(f"Provider '{provider_name}' not found.")
+
+        # Remove base_url for providers that don't need it
+        if key not in ["OLLAMA"]:
+            kwargs.pop("base_url", None)
+
         return provider_class(**kwargs)
+
 
 # Register providers
 ProviderRegistry.register_provider("openai", OpenAIProvider)

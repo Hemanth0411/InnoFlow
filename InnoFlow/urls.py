@@ -73,6 +73,9 @@ urlpatterns = [
 
     # Optional: include the default socialaccount routes (e.g. for admin testing)
     path('api/auth/social/allauth/', include('allauth.socialaccount.urls')),
+
+    path('ai/', include('ai_integration.urls')),
+
 ]
 
 urlpatterns += swagger_urlpatterns

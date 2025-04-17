@@ -7,6 +7,7 @@ from .utils.openai_provider import OpenAIProvider
 from .serializers import TaskStatusSerializer
 from .providers_registry import ProviderRegistry
 from ai_integration.tasks import run_ai_model_task  # Import the task here
+from django.db import transaction
 
 class TaskStatusViewSet(viewsets.ModelViewSet):
     queryset = TaskStatus.objects.all()
@@ -29,28 +30,27 @@ class ModelComparisonViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         
         prompt = serializer.validated_data['prompt']
-        models = serializer.validated_data['compared_models']
+        model_configs = serializer.validated_data['compared_models']
         
-        results = {}
-        for model in models:
-            provider = OpenAIProvider(api_key='your_key', model_name='gpt-3.5-turbo')
-            response = provider.generate_completion(prompt='your prompt')
-
-            results[model.name] = response
-            
+        # Create the comparison instance
         comparison = serializer.save()
-        comparison.results = results
-        comparison.save()
-
-        # Pass model_config_id, prompt, and comparison_id to the task
-        run_ai_model_task.delay(
-            model_config_id=comparison.id,  # The model configuration ID
-            prompt=prompt,  # The prompt
-            comparison_id=comparison.id  # The comparison ID
-        )
-
+        
+        # Prepare results structure
+        results = {}
+        
+        # Use on_commit to ensure the task runs after the transaction is committed
+        transaction.on_commit(lambda: self._run_ai_model_task(comparison.id, prompt, model_configs))
+        
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def _run_ai_model_task(self, comparison_id, prompt, model_configs):
+        for model_config in model_configs:
+            run_ai_model_task.delay(
+                model_config_id=model_config.id,
+                prompt=prompt,
+                comparison_id=comparison_id
+            )
     
     @action(detail=True, methods=['get'])
     def results(self, request, pk=None):

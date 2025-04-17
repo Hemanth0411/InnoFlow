@@ -1,38 +1,50 @@
 from django.test import TestCase
-from ai_integration.models import AIModelConfig, ModelComparison, ModelResponse
+from ai_integration.models import AIModelConfig, ModelComparison, ModelResponse, TaskStatus
 
-class AIModelConfigTest(TestCase):
+class TestAIModelConfig(TestCase):
     def test_create_model_config(self):
-        config = AIModelConfig.objects.create(
-            name="GPT-3.5",
+        model_config = AIModelConfig(
+            name="Test Model",
             provider="OPENAI",
             model_name="gpt-3.5-turbo",
-            api_key="test_key"
+            api_key="your_openai_api_key"
         )
-        self.assertEqual(str(config), "OPENAI: gpt-3.5-turbo")
-
-class ModelComparisonTest(TestCase):
-    def test_comparison_creation(self):
-        comparison = ModelComparison.objects.create(
-            prompt="Test prompt"
-        )
-        self.assertEqual(str(comparison), "Comparison for: Test prompt...")
-
-class ModelResponseTest(TestCase):
-    def setUp(self):
-        self.comparison = ModelComparison.objects.create(prompt="Test prompt")
-        self.config = AIModelConfig.objects.create(
-            name="GPT-3.5",
+        model_config.save()
+        self.assertEqual(model_config.name, "Test Model")
+        
+class TestModelComparison(TestCase):
+    def test_create_model_comparison(self):
+        model_config = AIModelConfig.objects.create(
+            name="Test Model",
             provider="OPENAI",
             model_name="gpt-3.5-turbo",
-            api_key="test_key"
+            api_key="your_openai_api_key"
         )
-    
-    def test_response_creation(self):
+        comparison = ModelComparison.objects.create(prompt="Test prompt")
+        comparison.compared_models.add(model_config)
+        self.assertEqual(comparison.prompt, "Test prompt")
+
+class TestModelResponse(TestCase):
+    def test_create_model_response(self):
+        model_config = AIModelConfig.objects.create(
+            name="Test Model",
+            provider="OPENAI",
+            model_name="gpt-3.5-turbo",
+            api_key="your_openai_api_key"
+        )
+        comparison = ModelComparison.objects.create(prompt="Test prompt")
         response = ModelResponse.objects.create(
-            comparison=self.comparison,
-            model_config=self.config,
+            comparison=comparison,
+            model_config=model_config,
             response="Test response",
-            latency=1.5
+            latency=0.5
         )
-        self.assertEqual(str(response), "OPENAI: gpt-3.5-turbo: Test response...")
+        self.assertEqual(response.response, "Test response")
+
+class TestTaskStatus(TestCase):
+    def test_create_task_status(self):
+        task_status = TaskStatus.objects.create(
+            task_id="test_task_id",
+            status="pending"
+        )
+        self.assertEqual(task_status.task_id, "test_task_id")

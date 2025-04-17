@@ -54,8 +54,11 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.github',
     'dj_rest_auth.registration',
     'drf_yasg',
-    'channels',
+    'django_celery_results',
 ]
+
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'default'  # optional, for additional cache control
 
 # Swagger settings
 SWAGGER_SETTINGS = {
@@ -68,17 +71,6 @@ SWAGGER_SETTINGS = {
     },
     'USE_SESSION_AUTH': False,
 }
-
-# Add channel layer configuration
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
-        },
-    },
-}
-
 # Allauth Settings
 SITE_ID = 1
 LOGIN_REDIRECT_URL = '/'
@@ -132,8 +124,17 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': 'localhost',
         'PORT': '5432',
+    },
+    'test': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'test_innoflow_db',
+        'USER': 'innoflow_user',
+        'PASSWORD': 'Hemanth',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
+
 
 
 # Password validation

@@ -1,5 +1,5 @@
-from typing import List, Dict
-from .models import Workflow, Node, NodePort, NodeConnection, WorkflowExecution
+from typing import List
+from .models import Workflow, WorkflowExecution
 
 class WorkflowValidator:
     @staticmethod
@@ -11,35 +11,25 @@ class WorkflowValidator:
             errors.append("Workflow has no nodes")
             return errors
 
-        # Validate node connections
-        for node in workflow.nodes.all():
-            required_inputs = NodePort.objects.filter(
-                node=node,
-                is_input=True,
-                is_required=True
-            )
-            
-            for port in required_inputs:
-                if not NodeConnection.objects.filter(
-                    target_node=node,
-                    target_port=port
-                ).exists():
-                    errors.append(f"Required input '{port.name}' not connected for node {node.name}")
-
         # Validate execution order
         orders = list(workflow.nodes.values_list('order', flat=True))
         if len(set(orders)) != len(orders):
             errors.append("Duplicate node execution orders found")
 
-        # New: Validate node types
-        valid_node_types = ["text_input", "openai_tts", "huggingface_summarization"]
-        for node in workflow.nodes.all():
-            if node.type not in valid_node_types:
-                errors.append(f"Invalid node type: {node.type}")
+        return errors
 
-        # New: Validate node configurations
-        for node in workflow.nodes.all():
-            if node.type == "openai_tts" and 'voice' not in node.config:
-                errors.append(f"Missing 'voice' in config for node {node.name}")
+    @staticmethod
+    def validate_execution(execution: WorkflowExecution) -> List[str]:
+        errors = []
+        
+        # Validate execution context
+        if not execution.execution_context:
+            errors.append("Execution context is required")
+
+        # Validate variables
+        required_vars = execution.workflow.config.get('required_variables', [])
+        for var in required_vars:
+            if var not in execution.variables:
+                errors.append(f"Required variable '{var}' not provided")
 
         return errors
