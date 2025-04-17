@@ -8,7 +8,7 @@ class NodeSerializer(serializers.ModelSerializer):
     )
     class Meta:
         model = Node
-        fields = ['id', 'type', 'config', 'order']
+        fields = ['id','workflow', 'type', 'config', 'order']
     
     def validate_workflow(self, value):
         if value.user != self.context['request'].user:
@@ -28,11 +28,16 @@ class NodeSerializer(serializers.ModelSerializer):
         return value
 
 class WorkflowSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Workflow objects.
+    
+    Includes all workflow fields and nested nodes.
+    """
     nodes = NodeSerializer(many=True, read_only=True)  # Include nodes in workflow response
 
     class Meta:
         model = Workflow
-        fields = ['id', 'name', 'user', 'created_at', 'updated_at', 'nodes']
+        fields = ['id', 'name', 'user', 'created_at', 'updated_at', 'nodes','config']
 
 class WorkflowExecutionSerializer(serializers.ModelSerializer):
     class Meta:
